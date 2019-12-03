@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 import numpy
-from scipy.linalg import block_diag
+import scipy.linalg as spla
 
 
 class Butterfly(object):
     """Class of a butterfly matrix.
 
     The diagonal random values are defined by exp(r / 10) (|r| <= 0.5).
-    This class refers to the folloing article.
-        URL: https://hal.inria.fr/inria-00593306/document
+    This algorithm refers to the folloing article:
+        Accelerating linear system solutions using randomization techniques
+        (Marc Baboulin et al. 2011),
+        URL<https://hal.inria.fr/inria-00593306/document>
 
     Notes:
         This class is only for internal usage.
@@ -52,8 +54,10 @@ class Butterfly(object):
 def build_recursive_butterfly(n, d):
     """Return a recursive butterfly matrix of a specified depth.
 
-    This algorithm refers to the folloing article.
-        URL: https://hal.inria.fr/inria-00593306/document
+    This algorithm refers to the folloing article:
+        Accelerating linear system solutions using randomization techniques
+        (Marc Baboulin et al. 2011),
+        URL<https://hal.inria.fr/inria-00593306/document>
 
     Arguments:
         n (int): Size of a matrix. It must be a multiple of 2^(d-1).
@@ -63,13 +67,13 @@ def build_recursive_butterfly(n, d):
         numpy.ndarray: Recursive butterfly matrix of depth d.
     """
     if d < 1:
-        return ValueError("recursion depth must be positive integer")
+        raise ValueError("recursion depth must be positive integer")
 
     if d == 1:
         return numpy.array(Butterfly(n))
 
     W = numpy.array(Butterfly(n // (2 ** (d - 1))))
     for _ in range(1, 2 ** (d - 1)):
-        W = block_diag(W, Butterfly(n // (2 ** (d - 1))))
+        W = spla.block_diag(W, Butterfly(n // (2 ** (d - 1))))
 
     return W @ build_recursive_butterfly(n, d - 1)
