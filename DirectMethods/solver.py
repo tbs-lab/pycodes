@@ -67,8 +67,8 @@ def prbt_solve(A, b, d):
     butterfly transformation (PRBT).
 
     This algorithm refers to the folloing article:
-        Accelerating linear system solutions using randomization techniques
-        (Marc Baboulin et al. 2011),
+        Marc Baboulin et al.
+        "Accelerating linear system solutions using randomization techniques", 2011,
         URL<https://hal.inria.fr/inria-00593306/document>
 
     Arguments:

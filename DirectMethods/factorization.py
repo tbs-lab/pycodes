@@ -7,8 +7,9 @@ def lu(A):
     no pivoting (GENP).
 
     This algorithm refers to the folloing article:
-        The Gaussian Elimination Algorithm - Mathonline,
-        URL<http://mathonline.wikidot.com/the-gaussian-elimination-algorithm>
+        Andrew M. Stuart and Jochen Voss,
+        "Matrix Analysis and Algorithm", 2009
+        URL<https://www.seehuhn.de/publications/StuaVo08.html>
 
     Arguments:
         A (array_like): A square matrix.
@@ -43,9 +44,9 @@ def plu(A):
     partial pivoting (GEPP).
 
     This algorithm refers to the folloing article:
-        The Algorithm for Gaussian Elimination with Partial Pivoting
-        - Mathonline,
-        URL<http://mathonline.wikidot.com/the-algorithm-for-gaussian-elimination-with-partial-pivoting>
+        Andrew M. Stuart and Jochen Voss,
+        "Matrix Analysis and Algorithm", 2009
+        URL<https://www.seehuhn.de/publications/StuaVo08.html>
 
     Arguments:
         A (array_like): A square matrix.

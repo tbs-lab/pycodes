@@ -8,8 +8,8 @@ class Butterfly(object):
 
     The diagonal random values are defined by exp(r / 10) (|r| <= 0.5).
     This algorithm refers to the folloing article:
-        Accelerating linear system solutions using randomization techniques
-        (Marc Baboulin et al. 2011),
+        Marc Baboulin et al.
+        "Accelerating linear system solutions using randomization techniques", 2011,
         URL<https://hal.inria.fr/inria-00593306/document>
 
     Notes:
@@ -55,8 +55,8 @@ def build_recursive_butterfly(n, d):
     """Return a recursive butterfly matrix of a specified depth.
 
     This algorithm refers to the folloing article:
-        Accelerating linear system solutions using randomization techniques
-        (Marc Baboulin et al. 2011),
+        Marc Baboulin et al.
+        "Accelerating linear system solutions using randomization techniques", 2011,
         URL<https://hal.inria.fr/inria-00593306/document>
 
     Arguments:
