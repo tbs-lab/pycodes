@@ -9,8 +9,9 @@ def jacobi_solve(A, b, max_iterations):
     Method.
 
     This algorithm refers to the folloing article:
-        The Algorithm for The Jacobi Iteration Method - Mathonline
-        URL<http://mathonline.wikidot.com/the-algorithm-for-the-jacobi-iteration-method>
+        Fujio Kako
+        "数値解析: 4 連立方程式の求解", 2019,
+        URL<https://www.ics.nara-wu.ac.jp/~kako/teaching/na/chap4.pdf>
 
     Arguments:
         A (array_like): A square coefficient matrix.
@@ -31,8 +32,8 @@ def jacobi_solve(A, b, max_iterations):
 
     # lower and upper triangular matrix of A
     LU = numpy.tril(A, -1) + numpy.triu(A, 1)
-    # diagonal vector of A
-    d = A.diagonal()
+    # inverse diagonal vector of A
+    dt = 1 / A.diagonal()
     # solution vector
     x = numpy.ones(b.shape[0])
     # current number of iteration
@@ -42,7 +43,7 @@ def jacobi_solve(A, b, max_iterations):
 
     while k < max_iterations and residual >= sys.float_info.epsilon:
         _x = x
-        x = (b - LU @ _x) / d
+        x = dt * (b - LU @ _x)
         residual = numpy.linalg.norm(x - _x)
         k += 1
 
@@ -55,9 +56,9 @@ def sor_solve(A, b, omega, max_iterations):
     Gauss-Seidel Method.
 
     This algorithm refers to the folloing article:
-        Andrew Stuart and Jochen Voss,
-        "Matrix Analysis and Algorithms", 2009,
-        URL<https://www.seehuhn.de/pages/numlinalg.html>
+        Fujio Kako
+        "数値解析: 4 連立方程式の求解", 2019,
+        URL<https://www.ics.nara-wu.ac.jp/~kako/teaching/na/chap4.pdf>
 
     Arguments:
         A (array_like): A square coefficient matrix.
@@ -77,25 +78,29 @@ def sor_solve(A, b, omega, max_iterations):
     if A.shape[0] != b.shape[0]:
         raise ValueError("matrix and vector size must be aligned")
 
-    # diagonal vector of A
-    d = A.diagonal()
-    # lower triangular matrix to use in iteration
-    L = numpy.tril(A, -1) + numpy.diag(omega * d)
+    # identity matrix
+    I = numpy.identity(A.shape[0])
+    # inverse diagonal vector of A
+    dt = 1 / A.diagonal()
+    # unit lower triangular matrix to use in iteration
+    L = I + (omega * dt).reshape(dt.size) * numpy.tril(A, -1)
     # upper triangular matrix to use in iteration
-    U = numpy.triu(A, 1) + numpy.diag((1 - omega) * d)
+    U = (1 - omega) * I - (omega * dt).reshape(dt.size) * numpy.triu(A, 1)
+    # constant vector to use in iteration
+    c = omega * dt * b
     # solution vector
     x = numpy.ones(b.shape[0])
     # current number of iteration
     k = 0
-    # residual 2-norm
+    # residual infinity (maximum) norm
     residual = numpy.inf
 
     while k < max_iterations and residual >= sys.float_info.epsilon:
         _x = x
-        y = b - U @ _x
+        y = U @ x + c
         # forward substitution
-        x = spla.solve_triangular(L, y, lower=True, unit_diagonal=False)
-        residual = numpy.linalg.norm(x - _x)
+        x = spla.solve_triangular(L, y, lower=True, unit_diagonal=True)
+        residual = numpy.linalg.norm(x - _x, ord=numpy.inf)
         k += 1
 
     return x, k
