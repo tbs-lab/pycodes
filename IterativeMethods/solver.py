@@ -140,18 +140,14 @@ def cg_solve(A, b, max_iterations):
     p = r
     # current number of iteration
     k = 0
-    # residual infinity (maximum) norm`
-    residual = numpy.inf
 
     while k < max_iterations:
         alpha = numpy.dot(r, p) / numpy.dot(p, A @ p)
-        _x = x
-        x = _x + alpha * p
-        residual = numpy.linalg.norm(x - _x, ord=numpy.inf)
-        if residual < sys.float_info.epsilon:
-            break
+        x = x + alpha * p
         _r = r
         r = _r - alpha * A @ p
+        if numpy.linalg.norm(r) < sys.float_info.epsilon:
+            break
         beta = (numpy.linalg.norm(r) / numpy.linalg.norm(_r)) ** 2
         p = r + beta * p
         k += 1
