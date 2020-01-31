@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-import numpy
+import np
 import scipy.linalg as spla
 
-from factorization import lu, plu
+from util import genp_factorize, gepp_factorize
 from butterfly import build_recursive_butterfly
 
 
-def forward_solve(L, b):
+def forward(L, b):
     """Return a solution x of a linear system Lx = b with forward
     substitution.
 
@@ -20,7 +20,7 @@ def forward_solve(L, b):
     return spla.solve_triangular(L, b, lower=True, unit_diagonal=True)
 
 
-def backward_solve(U, b):
+def backward(U, b):
     """Return a solution x of a linear system Ux = b with backward
     substitution.
 
@@ -34,7 +34,7 @@ def backward_solve(U, b):
     return spla.solve_triangular(U, b, lower=False, unit_diagonal=False)
 
 
-def plu_solve(A, b):
+def gepp(A, b):
     """Return a solution x of a linear system Ax = b with GEPP.
 
     Arguments:
@@ -44,44 +44,43 @@ def plu_solve(A, b):
     Returns:
         numpy.ndarray: A solution of a linear system Ax = b.
     """
-    A = numpy.array(A, dtype=numpy.float)
-    b = numpy.array(b, dtype=numpy.float)
-
+    A = np.array(A, dtype=np.float)
+    b = np.array(b, dtype=np.float)
     if A.shape[0] != A.shape[1]:
         raise ValueError("matrix must be square one")
     if A.shape[0] != b.shape[0]:
         raise ValueError("matrix and vector size must be aligned")
 
     # PLU factorization using Gaussian Elimination with Partial Pivoting (GEPP)
-    P, L, U = plu(A)
+    P, L, U = gepp_factorize(A)
 
     # solve
-    y = forward_solve(L, P.T @ b)
-    x = backward_solve(U, y)
+    y = forward(L, np.dot(P.T, b))
+    x = backward(U, y)
 
     return x
 
 
-def prbt_solve(A, b, d):
+def prbt(A, b, depth):
     """Return a solution x of a linear system Ax = b with partial recursive
     butterfly transformation (PRBT).
 
     This algorithm refers to the folloing article:
         Marc Baboulin et al.
-        "Accelerating linear system solutions using randomization techniques", 2011,
-        URL<https://hal.inria.fr/inria-00593306/document>
+        "Accelerating linear system solutions using randomization
+        techniques", 2011,
+        URL<https://hal.inria.fr/inria-00593306/document>.
 
     Arguments:
         A (array_like): A square coefficient matrix.
         b (array_like): A right-hand side vector.
-        d (int): A recursion depth (> 0).
+        depth (int): A recursion depth (> 0).
 
     Returns:
         numpy.ndarray: A solution of a linear system Ax = b.
     """
-    A = numpy.array(A, dtype=numpy.float)
-    b = numpy.array(b, dtype=numpy.float)
-
+    A = np.array(A, dtype=np.float)
+    b = np.array(b, dtype=np.float)
     if A.shape[0] != A.shape[1]:
         raise ValueError("matrix must be square one")
     if A.shape[0] != b.shape[0]:
@@ -89,25 +88,25 @@ def prbt_solve(A, b, d):
 
     n = A.shape[0]
     augments = 0
-    while (n + augments) % (2 ** (d - 1)):
+    while (n + augments) % (2 ** (depth - 1)):
         augments += 1
 
     # augment a matrix size adaptively for any size of a system
-    A = spla.block_diag(A, numpy.identity(augments))
+    A = spla.block_diag(A, np.identity(augments))
 
     # get two recursive butterfly matrices
-    W = build_recursive_butterfly(n + augments, d)
-    V = build_recursive_butterfly(n + augments, d)
+    W = build_recursive_butterfly(n + augments, depth)
+    V = build_recursive_butterfly(n + augments, depth)
 
     # partial recursive butterfly transformation
-    A_prbt = (W.T @ A @ V)[:n, :n]
+    A_prbt = np.dot(np.dot(W.T, A), V)[:n, :n]
 
-    # LU factorization without pivoting
-    L, U = lu(A_prbt)
+    # LU factorization using Gaussian Elimination with No Pivoting (GENP)
+    L, U = genp_factorize(A_prbt)
 
     # solve
-    y = forward_solve(L, W.T @ b)
-    y = backward_solve(U, y)
-    x = V @ y
+    y = forward(L, np.dot(W.T, b))
+    y = backward(U, y)
+    x = np.dot(V, y)
 
     return x
