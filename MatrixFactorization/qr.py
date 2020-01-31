@@ -14,7 +14,7 @@ def build_householder(a):
 
     Returns:
         v (numpy.ndarray): Householder vector.
-            This vector is normalized so that the 1st element is 1.
+            This vector is modified so that the 1st element is 1.
             See the reference for more details.
         beta (float): A coefficient of householder matrix.
     """
@@ -22,14 +22,9 @@ def build_householder(a):
     if a.ndim != 1:
         raise ValueError("vector must be 1 dimensional array")
 
-    v = a.copy()
     alpha = np.linalg.norm(a)
-
-    if a[0] >= 0:
-        v[0] -= alpha
-    else:
-        v[0] += alpha
-
+    v = a.copy()
+    v[0] = a[0] + alpha if a[0] >= 0 else a[0] - alpha
     beta = 2 * v[0] ** 2 / np.inner(v, v)
     v /= v[0]
 
