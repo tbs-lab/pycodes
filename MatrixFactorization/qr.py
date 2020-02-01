@@ -3,7 +3,7 @@ import numpy as np
 
 
 def build_householder(a):
-    """Return factors of householder matrix.
+    """Return factors of householder matrix (I - beta * vv.T).
 
     This algorithm refers to the folloing article:
         G.H Golub and C.F Van Loan,
@@ -18,13 +18,12 @@ def build_householder(a):
             See the reference for more details.
         beta (float): A coefficient of householder matrix.
     """
-    a = np.array(a, dtype=np.float)
-    if a.ndim != 1:
+    v = np.array(a, dtype=np.float)
+    if v.ndim != 1:
         raise ValueError("vector must be 1 dimensional array")
-
-    alpha = np.linalg.norm(a)
-    v = a.copy()
-    v[0] = a[0] + alpha if a[0] >= 0 else a[0] - alpha
+    # build v and beta
+    alpha = np.linalg.norm(v)
+    v[0] = v[0] + alpha if v[0] >= 0 else v[0] - alpha
     beta = 2 * v[0] ** 2 / np.inner(v, v)
     v /= v[0]
 
@@ -49,10 +48,8 @@ def triangularize(A):
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-
-    rows, cols = A.shape
-
     # triangularization
+    rows, cols = A.shape
     n = cols if rows > cols else rows - 1
     for j in range(n):
         v, beta = build_householder(A[j:, j])
@@ -74,27 +71,24 @@ def householder(A):
 
     Returns:
         Q (numpy.ndarray): A orthogonal matrix.
-        R (numpy.ndarray): A upper trianglar matrix.
+        A (numpy.ndarray): A upper trianglar matrix of triangularized A.
     """
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-
+    # initialization
     rows, cols = A.shape
     Q = np.identity(rows)
-
     # triangularization
-    R = triangularize(A)
-
+    A = triangularize(A)
     # backward accumulation
     n = cols - 1 if rows > cols else rows - 2
     for j in range(n, -1, -1):
-        v = R[j:, j].copy()
-        v[0] = 1
+        v = np.concatenate([[1], A[j + 1:, j]], axis=0)
         beta = 2 / np.inner(v, v)
         Q[j:, j:] -= np.outer(beta * v, np.dot(v, Q[j:, j:]))
 
-    return Q, np.triu(R)
+    return Q, np.triu(A)
 
 
 def build_wy(A):
@@ -105,28 +99,25 @@ def build_wy(A):
         "Matrix Computations 4th Edition", 2013..
 
     Arguments:
-        A (array_like): A upper trianglar matrix.
-            This lower trianglar submatrix must be overwritten by unit
-            householder vectors. See the reference for more details.
+        A (array_like): A matrix.
 
     Returns:
         W (numpy.ndarray): W matrix of WY representation.
         Y (numpy.ndarray): A unit lower trianglar matrix.
+            This upper trianglar submatrix is overwritten by
+            the result of applying tiangulation to A.
     """
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-
-    rows, cols = A.shape
-
     # initialization
-    Y = np.tril(A)
-    Y[np.eye(rows, cols, dtype=bool)] = 1
-    W = np.reshape(2 / np.inner(Y[:, 0], Y[:, 0]) * Y[:, 0], (-1, 1))
-
-    # get W matrix
+    Y = triangularize(A)
+    v = np.concatenate([[1], Y[1:, 0]], axis=0)
+    W = (2 / np.inner(v, v) * v).reshape(-1, 1)
+    # build W
+    rows, cols = A.shape
     for j in range(1, cols):
-        v = Y[:, j]
+        v = np.concatenate([np.zeros(j), [1], Y[j + 1:, j]], axis=0)
         beta = 2 / np.inner(v[j:], v[j:])
         w = beta * (v - np.dot(W, np.dot(Y[j:, :j].T, v[j:])))
         W = np.concatenate([W, w.reshape((-1, 1))], axis=1)
@@ -147,30 +138,26 @@ def wy(A, panels=64):
 
     Returns:
         Q (numpy.ndarray): A orthogonal matrix.
-        R (numpy.ndarray): A upper trianglar matrix.
+        A (numpy.ndarray): A upper trianglar matrix of triangularized A.
     """
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-
-    rows, cols = A.shape
-
     # initialization
-    j = 0
+    rows, cols = A.shape
     Q = np.identity(rows)
-    R = A
-
     # block householder QR factorization
+    j = 0
     n = cols if rows > cols else rows - 1
     while j < n:
         b = min(j + panels, n)
-        R[j:, j:b] = triangularize(R[j:, j:b])
-        W, Y = build_wy(R[j:, j:b])
+        W, A[j:, j:b] = build_wy(A[j:, j:b])
+        Y = np.tril(A[j:, j:b], k=-1) + np.eye(rows - j, b - j)
         Q[:, j:] -= np.dot(np.dot(Q[:, j:], W), Y.T)
-        R[j:, b:] -= np.dot(Y, np.dot(W.T, R[j:, b:]))
+        A[j:, b:] -= np.dot(Y, np.dot(W.T, A[j:, b:]))
         j = b
 
-    return Q, np.triu(R)
+    return Q, np.triu(A)
 
 
 def build_compact_wy(A):
@@ -182,28 +169,25 @@ def build_compact_wy(A):
         Transformations", 1989.
 
     Arguments:
-        A (array_like): A upper trianglar matrix.
-            This lower trianglar submatrix must be overwritten by unit
-            householder vectors. See the reference for more details.
+        A (array_like): A matrix.
 
     Returns:
         Y (numpy.ndarray): A unit lower trianglar matrix.
+            This upper trianglar submatrix is overwritten by
+            the result of applying tiangulation to A.
         T (numpy.ndarray): A upper triangular matrix.
     """
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-
-    rows, cols = A.shape
-
     # initialization
-    Y = np.tril(A)
-    Y[np.eye(rows, cols, dtype=bool)] = 1
-    T = np.array([[2 / np.inner(Y[:, 0], Y[:, 0])]])
-
-    # get T matrix
+    Y = triangularize(A)
+    v = np.concatenate([[1], Y[1:, 0]], axis=0)
+    T = np.array([[2 / np.inner(v, v)]])
+    # build T
+    rows, cols = A.shape
     for j in range(1, cols):
-        v = Y[:, j]
+        v = np.concatenate([np.zeros(j), [1], Y[j + 1:, j]], axis=0)
         beta = 2 / np.inner(v[j:], v[j:])
         t = (-beta * np.dot(T, np.dot(Y[j:, :j].T, v[j:]))).reshape(-1, 1)
         T = np.block([[T, t], [np.zeros((1, j)), np.array([[beta]])]])
@@ -226,27 +210,23 @@ def compact_wy(A, panels=64):
 
     Returns:
         Q (numpy.ndarray): A orthogonal matrix.
-        R (numpy.ndarray): A upper trianglar matrix.
+        A (numpy.ndarray): A upper trianglar matrix of triangularized A.
     """
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-
-    rows, cols = A.shape
-
     # initialization
-    j = 0
+    rows, cols = A.shape
     Q = np.identity(rows)
-    R = A
-
     # block householder QR factorization
+    j = 0
     n = cols if rows > cols else rows - 1
     while j < n:
         b = min(j + panels, n)
-        R[j:, j:b] = triangularize(R[j:, j:b])
-        Y, T = build_compact_wy(R[j:, j:b])
+        A[j:, j:b], T = build_compact_wy(A[j:, j:b])
+        Y = np.tril(A[j:, j:b], k=-1) + np.eye(rows - j, b - j)
         Q[:, j:] -= np.dot(np.dot(Q[:, j:], Y), np.dot(T, Y.T))
-        R[j:, b:] -= np.dot(np.dot(Y, T.T), np.dot(Y.T, R[j:, b:]))
+        A[j:, b:] -= np.dot(np.dot(Y, T.T), np.dot(Y.T, A[j:, b:]))
         j = b
 
-    return Q, np.triu(R)
+    return Q, np.triu(A)
