@@ -21,9 +21,10 @@ def build_householder(a):
     v = np.array(a, dtype=np.float)
     if v.ndim != 1:
         raise ValueError("vector must be 1 dimensional array")
-    # build v and beta
+    # build v
     alpha = np.linalg.norm(v)
     v[0] = v[0] + alpha if v[0] >= 0 else v[0] - alpha
+    # build beta
     beta = 2 * v[0] ** 2 / np.inner(v, v)
     v /= v[0]
 
@@ -110,12 +111,12 @@ def build_wy(A):
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-    # initialization
+    # build Y
     Y = triangularize(A)
-    v = np.concatenate([[1], Y[1:, 0]], axis=0)
-    W = (2 / np.inner(v, v) * v).reshape(-1, 1)
     # build W
     rows, cols = A.shape
+    v = np.concatenate([[1], Y[1:, 0]], axis=0)
+    W = (2 / np.inner(v, v) * v).reshape(-1, 1)
     for j in range(1, cols):
         v = np.concatenate([np.zeros(j), [1], Y[j + 1:, j]], axis=0)
         beta = 2 / np.inner(v[j:], v[j:])
@@ -180,12 +181,12 @@ def build_compact_wy(A):
     A = np.array(A, dtype=np.float)
     if A.ndim != 2:
         raise ValueError("matrix must be 2 dimensional array")
-    # initialization
+    # build Y
     Y = triangularize(A)
-    v = np.concatenate([[1], Y[1:, 0]], axis=0)
-    T = np.array([[2 / np.inner(v, v)]])
     # build T
     rows, cols = A.shape
+    v = np.concatenate([[1], Y[1:, 0]], axis=0)
+    T = np.array([[2 / np.inner(v, v)]])
     for j in range(1, cols):
         v = np.concatenate([np.zeros(j), [1], Y[j + 1:, j]], axis=0)
         beta = 2 / np.inner(v[j:], v[j:])
