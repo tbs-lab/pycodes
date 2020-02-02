@@ -3,7 +3,7 @@ import numpy as np
 
 
 def build_householder(a):
-    """Return factors of householder matrix (I - beta * vv.T).
+    """Return factors of householder matrix (I - tau * vv.T).
 
     This algorithm refers to the folloing article:
         G.H Golub and C.F Van Loan,
@@ -16,19 +16,22 @@ def build_householder(a):
         v (numpy.ndarray): Householder vector.
             This vector is modified so that the 1st element is 1.
             See the reference for more details.
-        beta (float): A coefficient of householder matrix.
+        tau (float): A coefficient of householder matrix.
     """
     v = np.array(a, dtype=np.float)
     if v.ndim != 1:
         raise ValueError("vector must be 1 dimensional array")
     # build v
-    alpha = np.linalg.norm(v)
-    v[0] = v[0] + alpha if v[0] >= 0 else v[0] - alpha
-    # build beta
-    beta = 2 * v[0] ** 2 / np.inner(v, v)
+    mu = np.inner(v[1:], v[1:])
+    if v[0] >= 0:
+        v[0] += np.sqrt(v[0] ** 2 + mu)
+    else:
+        v[0] -= np.sqrt(v[0] ** 2 + mu)
+    # build tau
+    tau = 2 * v[0] ** 2 / (v[0] ** 2 + mu)
     v /= v[0]
 
-    return v, beta
+    return v, tau
 
 
 def triangularize(A):
@@ -53,8 +56,8 @@ def triangularize(A):
     rows, cols = A.shape
     n = cols if rows > cols else rows - 1
     for j in range(n):
-        v, beta = build_householder(A[j:, j])
-        A[j:, j:] -= np.outer(beta * v, np.dot(v, A[j:, j:]))
+        v, tau = build_householder(A[j:, j])
+        A[j:, j:] -= np.outer(tau * v, np.dot(v, A[j:, j:]))
         A[j + 1:, j] = v[1:]
 
     return A
@@ -86,8 +89,8 @@ def householder(A):
     n = cols - 1 if rows > cols else rows - 2
     for j in range(n, -1, -1):
         v = np.concatenate([[1], A[j + 1:, j]], axis=0)
-        beta = 2 / np.inner(v, v)
-        Q[j:, j:] -= np.outer(beta * v, np.dot(v, Q[j:, j:]))
+        tau = 2 / np.inner(v, v)
+        Q[j:, j:] -= np.outer(tau * v, np.dot(v, Q[j:, j:]))
 
     return Q, np.triu(A)
 
@@ -119,8 +122,8 @@ def build_wy(A):
     W = (2 / np.inner(v, v) * v).reshape(-1, 1)
     for j in range(1, cols):
         v = np.concatenate([np.zeros(j), [1], Y[j + 1:, j]], axis=0)
-        beta = 2 / np.inner(v[j:], v[j:])
-        w = beta * (v - np.dot(W, np.dot(Y[j:, :j].T, v[j:])))
+        tau = 2 / np.inner(v[j:], v[j:])
+        w = tau * (v - np.dot(W, np.dot(Y[j:, :j].T, v[j:])))
         W = np.concatenate([W, w.reshape((-1, 1))], axis=1)
 
     return W, Y
@@ -189,9 +192,9 @@ def build_compact_wy(A):
     T = np.array([[2 / np.inner(v, v)]])
     for j in range(1, cols):
         v = np.concatenate([np.zeros(j), [1], Y[j + 1:, j]], axis=0)
-        beta = 2 / np.inner(v[j:], v[j:])
-        t = (-beta * np.dot(T, np.dot(Y[j:, :j].T, v[j:]))).reshape(-1, 1)
-        T = np.block([[T, t], [np.zeros((1, j)), np.array([[beta]])]])
+        tau = 2 / np.inner(v[j:], v[j:])
+        t = (-tau * np.dot(T, np.dot(Y[j:, :j].T, v[j:]))).reshape(-1, 1)
+        T = np.block([[T, t], [np.zeros((1, j)), np.array([[tau]])]])
 
     return Y, T
 
