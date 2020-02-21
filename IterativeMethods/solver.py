@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
-import np
+import numpy as np
 import scipy.linalg as spla
 
 

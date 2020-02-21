@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import np
+import numpy as np 
 
 
 def genp_factorize(A):

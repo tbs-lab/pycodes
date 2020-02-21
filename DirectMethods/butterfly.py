@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import np
+import numpy as np
 import scipy.linalg as spla
 
 
