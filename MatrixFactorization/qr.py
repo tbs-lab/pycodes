@@ -17,21 +17,23 @@ def build_householder(a):
             This vector is modified so that the 1st element is 1.
             See the reference for more details.
         tau (float): A coefficient of householder matrix.
+        diagonal (float): A diagonal value which is result of householder
+            transformation.
     """
     v = np.array(a, dtype=np.float)
     if v.ndim != 1:
         raise ValueError("vector must be 1 dimensional array")
-    # build v
-    mu = np.inner(v[1:], v[1:])
+    # build v and tau
+    diagonal = np.linalg.norm(v)
     if v[0] >= 0:
-        v[0] += np.sqrt(v[0] ** 2 + mu)
+        v[0] += diagonal
+        diagonal = -diagonal
     else:
-        v[0] -= np.sqrt(v[0] ** 2 + mu)
-    # build tau
-    tau = 2 * v[0] ** 2 / (v[0] ** 2 + mu)
+        v[0] -= diagonal
     v /= v[0]
+    tau = 2 / np.inner(v, v)
 
-    return v, tau
+    return v, tau, diagonal
 
 
 def triangularize(A):
@@ -56,9 +58,9 @@ def triangularize(A):
     rows, cols = A.shape
     n = cols if rows > cols else rows - 1
     for j in range(n):
-        v, tau = build_householder(A[j:, j])
-        A[j:, j:] -= np.outer(tau * v, np.dot(v, A[j:, j:]))
+        v, tau, A[j, j] = build_householder(A[j:, j])
         A[j + 1:, j] = v[1:]
+        A[j:, j + 1:] -= np.outer(tau * v, np.dot(v, A[j:, j + 1:]))
 
     return A
 
